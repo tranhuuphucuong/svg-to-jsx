@@ -1,6 +1,6 @@
 # svg-to-jsx
 
-## Convert your SVG to React functional component directly from your code editor, with just one command.
+kkkkk
 
 <br />
 

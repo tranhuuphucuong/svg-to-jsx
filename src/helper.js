@@ -19,23 +19,23 @@ const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
  * @returns {{ fileName: string, finalPath: string }}
  */
 const renameFileTo = (finalPath, fileName, i = 0) => {
-	const fa = fileName.split(".");
-	const newFileName = `${fa[0]}${i ? i : ""}.${fa[fa.length - 1]}`;
+  const fa = fileName.split(".");
+  const newFileName = `${fa[0]}${i ? i : ""}.${fa[fa.length - 1]}`;
 
-	let newPath = "";
-	if (process.platform === "win32") {
-		const pa = finalPath.split("\\");
-		pa.pop();
-		newPath = `${pa.join("\\")}\\${newFileName}`;
-	} else {
-		const pa = finalPath.split("/");
-		pa.pop();
-		newPath = `${pa.join("/")}/${newFileName}`;
-	}
+  let newPath = "";
+  if (process.platform === "win32") {
+    const pa = finalPath.split("\\");
+    pa.pop();
+    newPath = `${pa.join("\\")}\\${newFileName}`;
+  } else {
+    const pa = finalPath.split("/");
+    pa.pop();
+    newPath = `${pa.join("/")}/${newFileName}`;
+  }
 
-	return fs.existsSync(newPath)
-		? renameFileTo(finalPath, fileName, ++i)
-		: { finalPath: newPath, fileName: newFileName };
+  return fs.existsSync(newPath)
+    ? renameFileTo(finalPath, fileName, ++i)
+    : { finalPath: newPath, fileName: newFileName };
 };
 
 /**
@@ -47,54 +47,54 @@ const renameFileTo = (finalPath, fileName, i = 0) => {
  * @returns {Promise<{ fileName: string, finalPath: string } | null>}
  */
 const checkFile = async (activeTxtEditor, ext) => {
-	return new Promise((resolve, reject) => {
-		// Check if there is open text editor
-		if (!activeTxtEditor) {
-			vscode.window.showErrorMessage("Open a svg file to convert to JSX/TSX!");
-			resolve(null);
-		}
-		// If the file isn't .svg show warning!
-		if (!activeTxtEditor.document.uri.fsPath.endsWith(".svg")) {
-			vscode.window
-				.showWarningMessage(
-					"Open a svg file to convert to JSX. Override ?",
-					"Yes",
-					"No"
-				)
-				.then((value) => {
-					if (value === "Yes") {
-						// Convert SVG file to TSX or JSX
-						const { finalPath, fileName } = formatPath(
-							activeTxtEditor.document.uri.fsPath,
-							ext
-						);
-						// Check if the file already exist and rename if required
-						const finalFileName = renameFileTo(finalPath, fileName);
-						resolve(finalFileName);
-					}
-					resolve(null);
-				});
-		} else {
-			// Convert SVG file to TSX or JSX
-			const { finalPath, fileName } = formatPath(
-				activeTxtEditor.document.uri.fsPath,
-				ext
-			);
-			// Check if the file already exist and rename if required
-			const finalFileName = renameFileTo(finalPath, fileName);
-			resolve(finalFileName);
-		}
-	});
+  return new Promise((resolve, reject) => {
+    // Check if there is open text editor
+    if (!activeTxtEditor) {
+      vscode.window.showErrorMessage("Open a svg file to convert to JSX/TSX!");
+      resolve(null);
+    }
+    // If the file isn't .svg show warning!
+    if (!activeTxtEditor.document.uri.fsPath.endsWith(".svg")) {
+      vscode.window
+        .showWarningMessage(
+          "Open a svg file to convert to JSX. Override ?",
+          "Yes",
+          "No"
+        )
+        .then((value) => {
+          if (value === "Yes") {
+            // Convert SVG file to TSX or JSX
+            const { finalPath, fileName } = formatPath(
+              activeTxtEditor.document.uri.fsPath,
+              ext
+            );
+            // Check if the file already exist and rename if required
+            const finalFileName = renameFileTo(finalPath, fileName);
+            resolve(finalFileName);
+          }
+          resolve(null);
+        });
+    } else {
+      // Convert SVG file to TSX or JSX
+      const { finalPath, fileName } = formatPath(
+        activeTxtEditor.document.uri.fsPath,
+        ext
+      );
+      // Check if the file already exist and rename if required
+      const finalFileName = renameFileTo(finalPath, fileName);
+      resolve(finalFileName);
+    }
+  });
 };
 
 /**
  * @param {string} jsxPath
  */
 const formatDocument = async (jsxPath) => {
-	const uri = vscode.Uri.file(jsxPath);
-	await vscode.commands.executeCommand("vscode.open", uri);
-	await vscode.commands.executeCommand("editor.action.formatDocument");
-	await vscode.commands.executeCommand("workbench.action.files.save");
+  const uri = vscode.Uri.file(jsxPath);
+  await vscode.commands.executeCommand("vscode.open", uri);
+  await vscode.commands.executeCommand("editor.action.formatDocument");
+  await vscode.commands.executeCommand("workbench.action.files.save");
 };
 
 /**
@@ -106,12 +106,13 @@ const formatDocument = async (jsxPath) => {
  * @returns {string}
  */
 const addJSX = (jsx, fileName, isTs = false) => {
-	const name = (fileName.charAt(0).toUpperCase() + fileName.slice(1)).split(
-		"."
-	)[0];
-	return isTs
-		? `import React from 'react';\n\ninterface Props {\n\tclassName?: string;\n}\n\nconst ${name} = (props: Props) => {\n\treturn (\n\t\t${jsx}\n\t)\n}\n\nexport default ${name}\n`
-		: `import React from 'react';\n\nconst ${name} = (props) => {\n\treturn (\n\t\t${jsx}\n\t)\n}\n\nexport default ${name}\n`;
+  const name = (fileName.charAt(0).toUpperCase() + fileName.slice(1)).split(
+    "."
+  )[0];
+  const updatedJsx = jsx.replace(/(?<=<svg[^>]*)>/g, " {...props}>");
+  return isTs
+    ? `export const ${name} = (props: any) => {\n\treturn (\n\t\t${updatedJsx}\n\t)\n}\n`
+    : `export const ${name} = (props) => {\n\treturn (\n\t\t${updatedJsx}\n\t)\n}\n`;
 };
 
 /**
@@ -123,36 +124,36 @@ const addJSX = (jsx, fileName, isTs = false) => {
  * @returns {{ fileName: string, finalPath: string }}
  */
 const formatPath = (filePath, ext) => {
-	// Get the file name and replace the extentions as specified in the arguement,
-	// for windows and UNIX like systems
-	const pa =
-		process.platform === "win32" ? filePath.split("\\") : filePath.split("/");
+  // Get the file name and replace the extentions as specified in the arguement,
+  // for windows and UNIX like systems
+  const pa =
+    process.platform === "win32" ? filePath.split("\\") : filePath.split("/");
 
-	// Remove all the spaces from File name
-	let fileName = `${pa.pop().split(".")[0].replace(/\s/g, "")}`;
+  // Remove all the spaces from File name
+  let fileName = `${pa.pop().split(".")[0].replace(/\s/g, "")}`;
 
-	// convert to PascalCase
-	fileName = fileName.includes("-")
-		? `${fileName
-				.split("-")
-				.reduce(
-					(prev, curr) => `${capitalize(prev)}${capitalize(curr)}`
-				)}${ext}`
-		: `${capitalize(fileName)}${ext}`;
+  // convert to PascalCase
+  fileName = fileName.includes("-")
+    ? `${fileName
+        .split("-")
+        .reduce(
+          (prev, curr) => `${capitalize(prev)}${capitalize(curr)}`
+        )}${ext}`
+    : `${capitalize(fileName)}${ext}`;
 
-	return {
-		finalPath: `${process.platform !== "win32" ? "/" : ""}${path.join(
-			...pa,
-			fileName
-		)}`,
-		fileName,
-	};
+  return {
+    finalPath: `${process.platform !== "win32" ? "/" : ""}${path.join(
+      ...pa,
+      fileName
+    )}`,
+    fileName,
+  };
 };
 
 module.exports = {
-	capitalize,
-	checkFile,
-	formatDocument,
-	addJSX,
-	formatPath,
+  capitalize,
+  checkFile,
+  formatDocument,
+  addJSX,
+  formatPath,
 };
